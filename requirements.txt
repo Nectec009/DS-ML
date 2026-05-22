@@ -3,5 +3,4 @@ pandas
 matplotlib
 numpy
 seaborn
-io
 warnings
