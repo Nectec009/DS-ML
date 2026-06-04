@@ -22,3 +22,5 @@ elif st.button("💰 EDA APP"):
     st.switch_page("pages/EDA_app.py")
 elif st.button("💰 sale_predict"):
     st.switch_page("pages/sale_predict.py")
+elif st.button("💰 truck_predict"):
+    st.switch_page("pages/truck_predict.py")
