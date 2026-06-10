@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import joblib
+from urllib.parse import quote
+
 
 # =====================================================
 # PAGE CONFIG
@@ -89,6 +91,126 @@ theme = themes[st.session_state.theme_mode]
 
 
 # =====================================================
+# SVG IMAGE FUNCTIONS
+# =====================================================
+def svg_to_data_uri(svg_code):
+    return "data:image/svg+xml;utf8," + quote(svg_code)
+
+
+def create_main_svg(theme):
+    svg = f"""
+    <svg width="1200" height="420" viewBox="0 0 1200 420" xmlns="http://www.w3.org/2000/svg">
+        <rect width="1200" height="420" rx="32" fill="{theme['panel']}"/>
+
+        <circle cx="135" cy="75" r="7" fill="{theme['success']}"/>
+        <circle cx="165" cy="75" r="7" fill="{theme['primary']}"/>
+        <circle cx="195" cy="75" r="7" fill="{theme['secondary']}"/>
+
+        <text x="70" y="130" fill="{theme['primary']}" font-size="34" font-weight="900">
+            MARKET SEGMENTATION
+        </text>
+        <text x="70" y="168" fill="{theme['success']}" font-size="20" font-weight="800">
+            K-MEANS INTELLIGENCE DASHBOARD
+        </text>
+        <text x="70" y="202" fill="{theme['muted']}" font-size="17">
+            Units Sold • Marketing Spend • Logistics Delay • Customer Score • Revenue
+        </text>
+
+        <rect x="70" y="245" width="210" height="82" rx="18" fill="{theme['card']}" stroke="{theme['border']}" stroke-width="3"/>
+        <text x="175" y="282" text-anchor="middle" fill="{theme['primary']}" font-size="18" font-weight="900">
+            INPUT DATA
+        </text>
+        <text x="175" y="309" text-anchor="middle" fill="{theme['muted']}" font-size="14">
+            Customer Features
+        </text>
+
+        <rect x="320" y="245" width="210" height="82" rx="18" fill="{theme['card']}" stroke="{theme['border']}" stroke-width="3"/>
+        <text x="425" y="282" text-anchor="middle" fill="{theme['success']}" font-size="18" font-weight="900">
+            SCALE DATA
+        </text>
+        <text x="425" y="309" text-anchor="middle" fill="{theme['muted']}" font-size="14">
+            Preprocessing
+        </text>
+
+        <rect x="570" y="245" width="210" height="82" rx="18" fill="{theme['card']}" stroke="{theme['border']}" stroke-width="3"/>
+        <text x="675" y="282" text-anchor="middle" fill="{theme['primary']}" font-size="18" font-weight="900">
+            K-MEANS
+        </text>
+        <text x="675" y="309" text-anchor="middle" fill="{theme['muted']}" font-size="14">
+            Predict Cluster
+        </text>
+
+        <rect x="820" y="245" width="260" height="82" rx="18" fill="{theme['card']}" stroke="{theme['border']}" stroke-width="3"/>
+        <text x="950" y="282" text-anchor="middle" fill="{theme['success']}" font-size="18" font-weight="900">
+            CUSTOMER GROUP
+        </text>
+        <text x="950" y="309" text-anchor="middle" fill="{theme['muted']}" font-size="14">
+            Business Decision
+        </text>
+
+        <line x1="280" y1="286" x2="320" y2="286" stroke="{theme['primary']}" stroke-width="5"/>
+        <line x1="530" y1="286" x2="570" y2="286" stroke="{theme['primary']}" stroke-width="5"/>
+        <line x1="780" y1="286" x2="820" y2="286" stroke="{theme['primary']}" stroke-width="5"/>
+
+        <circle cx="930" cy="118" r="92" fill="none" stroke="{theme['primary']}" stroke-width="4" opacity="0.95"/>
+        <circle cx="930" cy="118" r="58" fill="none" stroke="{theme['secondary']}" stroke-width="3" opacity="0.8"/>
+        <circle cx="930" cy="118" r="20" fill="{theme['primary']}"/>
+
+        <circle cx="840" cy="85" r="13" fill="{theme['success']}"/>
+        <circle cx="1015" cy="73" r="13" fill="{theme['secondary']}"/>
+        <circle cx="990" cy="180" r="13" fill="{theme['primary']}"/>
+        <circle cx="870" cy="180" r="13" fill="{theme['success']}"/>
+
+        <line x1="930" y1="118" x2="840" y2="85" stroke="{theme['success']}" stroke-width="3"/>
+        <line x1="930" y1="118" x2="1015" y2="73" stroke="{theme['secondary']}" stroke-width="3"/>
+        <line x1="930" y1="118" x2="990" y2="180" stroke="{theme['primary']}" stroke-width="3"/>
+        <line x1="930" y1="118" x2="870" y2="180" stroke="{theme['success']}" stroke-width="3"/>
+    </svg>
+    """
+    return svg_to_data_uri(svg)
+
+
+def create_cluster_svg(theme, cluster):
+    if cluster == 0:
+        title = "WARNING!"
+        subtitle = "CLUSTER 0"
+        detail = "LOW VALUE / NEW CUSTOMER"
+        main_color = theme["warning"]
+    else:
+        title = "SUCCESS!"
+        subtitle = "CLUSTER 1"
+        detail = "HIGH VALUE CUSTOMER"
+        main_color = theme["success"]
+
+    svg = f"""
+    <svg width="950" height="280" viewBox="0 0 950 280" xmlns="http://www.w3.org/2000/svg">
+        <rect width="950" height="280" rx="30" fill="{theme['panel']}"/>
+        <rect x="30" y="30" width="890" height="220" rx="26" fill="{theme['card']}" stroke="{main_color}" stroke-width="4"/>
+
+        <circle cx="145" cy="140" r="72" fill="none" stroke="{main_color}" stroke-width="6"/>
+        <circle cx="145" cy="140" r="42" fill="none" stroke="{theme['border']}" stroke-width="5"/>
+        <circle cx="145" cy="140" r="22" fill="{main_color}"/>
+
+        <text x="265" y="105" fill="{main_color}" font-size="42" font-weight="900">
+            {title}
+        </text>
+        <text x="265" y="153" fill="{theme['text']}" font-size="30" font-weight="900">
+            {subtitle}
+        </text>
+        <text x="265" y="195" fill="{theme['muted']}" font-size="22" font-weight="700">
+            {detail}
+        </text>
+
+        <rect x="750" y="78" width="112" height="112" rx="22" fill="{main_color}"/>
+        <text x="806" y="153" text-anchor="middle" fill="#ffffff" font-size="62" font-weight="900">
+            {cluster}
+        </text>
+    </svg>
+    """
+    return svg_to_data_uri(svg)
+
+
+# =====================================================
 # CSS STYLE
 # =====================================================
 st.markdown(f"""
@@ -106,16 +228,14 @@ st.markdown(f"""
     --muted: {theme['muted']};
 }}
 
-/* ===== Main Background ===== */
 .stApp {{
     background:
-        radial-gradient(circle at 10% 15%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 25%),
-        radial-gradient(circle at 90% 15%, color-mix(in srgb, var(--secondary) 18%, transparent), transparent 28%),
+        radial-gradient(circle at 12% 18%, var(--border) 0%, transparent 28%),
+        radial-gradient(circle at 88% 18%, var(--secondary) 0%, transparent 26%),
         linear-gradient(135deg, var(--bg), #05050f);
     color: var(--text);
 }}
 
-/* Hide Streamlit Default UI */
 #MainMenu {{
     visibility: hidden;
 }}
@@ -128,7 +248,6 @@ header {{
     visibility: hidden;
 }}
 
-/* Text */
 h1, h2, h3 {{
     color: var(--primary) !important;
     font-weight: 900 !important;
@@ -139,19 +258,17 @@ p, label, span {{
     color: var(--text);
 }}
 
-/* Sidebar */
 [data-testid="stSidebar"] {{
     background: var(--panel);
     border-right: 2px solid var(--border);
 }}
 
-/* Header Panel */
 .main-panel {{
     background: var(--panel);
     border: 2px solid var(--border);
     border-radius: 18px;
     padding: 28px;
-    box-shadow: 0 0 22px color-mix(in srgb, var(--primary) 65%, transparent);
+    box-shadow: 0 0 22px var(--primary);
     margin-bottom: 22px;
 }}
 
@@ -176,27 +293,23 @@ p, label, span {{
     margin-top: 8px;
 }}
 
-/* Section Card */
 .section-card {{
     background: var(--panel);
     border: 2px solid var(--border);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 18px;
-    box-shadow: 0 0 18px color-mix(in srgb, var(--border) 75%, transparent);
+    box-shadow: 0 0 18px var(--border);
 }}
 
-/* Input Card */
 .input-card {{
     background: var(--card);
     border: 2px solid var(--border);
     border-radius: 15px;
     padding: 18px;
     min-height: 175px;
-    box-shadow: inset 0 0 14px color-mix(in srgb, var(--primary) 25%, transparent);
 }}
 
-/* Buttons */
 .stButton > button {{
     width: 100%;
     border-radius: 14px;
@@ -208,7 +321,7 @@ p, label, span {{
     padding: 13px 20px;
     box-shadow:
         inset 0 2px 4px rgba(255,255,255,0.35),
-        0 0 16px color-mix(in srgb, var(--primary) 80%, transparent);
+        0 0 16px var(--primary);
     transition: 0.20s;
 }}
 
@@ -221,7 +334,6 @@ p, label, span {{
         0 0 28px var(--primary);
 }}
 
-/* Input Box */
 .stNumberInput input {{
     background: var(--card) !important;
     color: var(--text) !important;
@@ -229,18 +341,13 @@ p, label, span {{
     border-radius: 10px !important;
 }}
 
-.stSlider {{
-    color: var(--primary) !important;
-}}
-
-/* Metric Card */
 .metric-card {{
     background: var(--card);
     border: 2px solid var(--border);
     border-radius: 15px;
     padding: 18px;
     text-align: center;
-    box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 45%, transparent);
+    box-shadow: 0 0 16px var(--primary);
 }}
 
 .metric-title {{
@@ -257,13 +364,12 @@ p, label, span {{
     text-shadow: 0 0 10px var(--primary);
 }}
 
-/* Result Box */
 .result-box {{
     background: var(--card);
     border: 2px solid var(--border);
     border-radius: 16px;
     padding: 24px;
-    box-shadow: 0 0 22px color-mix(in srgb, var(--success) 45%, transparent);
+    box-shadow: 0 0 22px var(--success);
     margin-bottom: 18px;
 }}
 
@@ -281,7 +387,6 @@ p, label, span {{
     text-shadow: 0 0 10px var(--warning);
 }}
 
-/* Neon Line */
 .neon-line {{
     height: 8px;
     border-radius: 20px;
@@ -290,14 +395,27 @@ p, label, span {{
     margin: 20px 0 26px 0;
 }}
 
-/* Dataframe */
+.image-shell {{
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 30px;
+    padding: 12px;
+    box-shadow: 0 0 22px var(--primary);
+    margin-bottom: 28px;
+}}
+
+.image-shell img {{
+    width: 100%;
+    border-radius: 24px;
+    display: block;
+}}
+
 [data-testid="stDataFrame"] {{
     border: 2px solid var(--border);
     border-radius: 15px;
     overflow: hidden;
 }}
 
-/* Alert Box Adjustment */
 .stAlert {{
     border-radius: 14px;
 }}
@@ -313,10 +431,22 @@ st.markdown("""
     <div class="app-title">MARKET SEGMENTATION COMMAND</div>
     <div class="app-subtitle">SUCCESS! SYSTEM READY</div>
     <div class="app-desc">
-        ระบบจัดกลุ่มลูกค้าด้วย K-Means ในสไตล์ Dark Neon Tactical UI พร้อมปุ่มสลับสี Theme
+        ระบบจัดกลุ่มลูกค้าด้วย K-Means ในสไตล์ Dark Neon Tactical UI พร้อมรูปภาพและปุ่มสลับสี Theme
     </div>
 </div>
 <div class="neon-line"></div>
+""", unsafe_allow_html=True)
+
+
+# =====================================================
+# MAIN IMAGE
+# =====================================================
+main_image = create_main_svg(theme)
+
+st.markdown(f"""
+<div class="image-shell">
+    <img src="{main_image}">
+</div>
 """, unsafe_allow_html=True)
 
 
@@ -481,7 +611,18 @@ if st.button("BUTTON  |  จัดกลุ่มข้อมูล", use_contai
             st.error(f"❌ เกิดข้อผิดพลาดในการทำนาย: {e}")
             st.stop()
 
+        if predicted_cluster not in centroids.index:
+            st.error(f"❌ ไม่พบข้อมูล Centroid สำหรับ Cluster {predicted_cluster}")
+            st.stop()
+
         cluster_info = centroids.loc[predicted_cluster]
+        cluster_image = create_cluster_svg(theme, predicted_cluster)
+
+        st.markdown(f"""
+        <div class="image-shell">
+            <img src="{cluster_image}">
+        </div>
+        """, unsafe_allow_html=True)
 
         if predicted_cluster == 0:
             result_title = "WARNING!"
