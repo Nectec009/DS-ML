@@ -180,6 +180,12 @@ menus = [
         "desc": "TCP Group: ระบบแนะนำสินค้า",
         "icon": "🚚",
         "page": "pages/association_items.py"
+    },
+    {
+        "title": "association recommend",
+        "desc": "association recommend",
+        "icon": "🚚",
+        "page": "pages/association_recommend.py"
     }
 ]
 
