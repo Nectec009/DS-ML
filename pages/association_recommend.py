@@ -1,156 +1,1051 @@
+import streamlit as st
+import pandas as pd
+import ast
+import re
+from html import escape
 
-import streamlit as st # Import library Streamlit สำหรับสร้าง Web Application
-import pandas as pd # Import library Pandas สำหรับจัดการข้อมูล DataFrame
-import ast # Import ast for literal_eval to safely parse frozenset strings
+# =====================================================
+# PAGE CONFIG
+# =====================================================
+st.set_page_config(
+    layout="wide",
+    page_title="TCP Recommendation",
+    page_icon="🛒"
+)
 
-# --- 1. Load Association Rules ---
-# ตรวจสอบให้แน่ใจว่า 'Model_association_Rules.csv' อยู่ในไดเรกทอรีเดียวกันกับแอป Streamlit นี้
-@st.cache_data # Decorator สำหรับ Cache ข้อมูล เพื่อให้ Streamlit โหลดข้อมูลเพียงครั้งเดียวเมื่อแอปเริ่มทำงาน
-def load_rules():
-    rules = pd.read_csv('model/Model_association_Rules.csv') # โหลดไฟล์ CSV ที่บันทึกกฎความสัมพันธ์ (corrected path)
-    # แปลงคอลัมน์ 'antecedents' และ 'consequents' ที่เป็น string กลับไปเป็น frozenset
-    # โดยการลบ 'frozenset(' และ ')' ออกก่อนใช้ ast.literal_eval
-    rules['antecedents'] = rules['antecedents'].apply(lambda x: frozenset(ast.literal_eval(x.replace("frozenset(", "").replace(")", ""))))
-    rules['consequents'] = rules['consequents'].apply(lambda x: frozenset(ast.literal_eval(x.replace("frozenset(", "").replace(")", ""))))
-    return rules
+# =====================================================
+# CSS STYLE: SOFT NEUMORPHISM UI
+# =====================================================
+st.markdown("""
+<style>
+/* ================= GLOBAL ================= */
+.stApp {
+    background: #e9eef8;
+    color: #14345f;
+}
 
-df_rules_app = load_rules() # เรียกใช้ฟังก์ชันเพื่อโหลดกฎความสัมพันธ์เข้าสู่แอปพลิเคชัน
+.block-container {
+    max-width: 1200px;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+}
 
-# --- 2. Extract Unique Items for Selection ---
-# ดึงรายการทั้งหมดที่เป็นเอกลักษณ์จากกฎความสัมพันธ์ และจัดหมวดหมู่ตามประเภทเดิม
-# (ค่าเหล่านี้อ้างอิงจาก df_raw.unique() ใน Jupyter Notebook)
+#MainMenu {
+    visibility: hidden;
+}
 
-# Hardcoded unique values from the original dataframe columns
-all_regions = sorted(['USA-WEST', 'ASIA-PACIFIC', 'TH-NORTH', 'TH-CENTRAL', 'EUROPE-EU', 'USA-EAST', 'TH-SOUTH'])
-all_products = sorted(['Tropical Edition', 'Original Blue', 'Sugarfree', 'Krating Daeng 250', 'Red Edition'])
-all_channels = sorted(['extreme sports', 'f1 sponsorship', 'TV Ad', 'in-store promo', 'Social Media'])
+footer {
+    visibility: hidden;
+}
 
-unique_regions = [item for item in all_regions if item in {x for s in df_rules_app['antecedents'] for x in s}.union({x for s in df_rules_app['consequents'] for x in s})]
-unique_products = [item for item in all_products if item in {x for s in df_rules_app['antecedents'] for x in s}.union({x for s in df_rules_app['consequents'] for x in s})]
-unique_channels = [item for item in all_channels if item in {x for s in df_rules_app['antecedents'] for x in s}.union({x for s in df_rules_app['consequents'] for x in s})]
+header {
+    visibility: hidden;
+}
 
-# --- 3. Recommendation Function ---
-# ฟังก์ชันสำหรับให้คำแนะนำ โดยรับรายการที่ผู้ใช้เลือก (antecedents) และ DataFrame ของกฎความสัมพันธ์
-def get_recommendations(user_selected_items: frozenset, rules_df: pd.DataFrame, top_n=5):
-    potential_recommendations = [] # List สำหรับเก็บคำแนะนำที่เป็นไปได้
+h1, h2, h3, h4, h5, h6 {
+    color: #14345f !important;
+    font-weight: 900 !important;
+}
 
-    for _, rule in rules_df.iterrows(): # วนลูปผ่านแต่ละกฎใน DataFrame ของกฎความสัมพันธ์
-        rule_antecedents = rule['antecedents'] # ดึง Antecedents ของกฎปัจจุบัน
-        rule_consequents = rule['consequents'] # ดึง Consequents ของกฎปัจจุบัน
+p, label, span, div {
+    color: #14345f;
+}
 
-        # ตรวจสอบว่ารายการที่ผู้ใช้เลือกมี Antecedents ของกฎทั้งหมดหรือไม่ (คือ ผู้ใช้เลือก Antecedents ของกฎนั้นๆ)
+/* ================= TOP BAR ================= */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.logo-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #6f7889;
+    color: #ffc107;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow:
+        7px 7px 14px #c7ccd5,
+        -7px -7px 14px #ffffff;
+    font-size: 18px;
+}
+
+.top-title {
+    font-size: 24px;
+    font-weight: 900;
+    color: #14345f;
+    letter-spacing: 0.5px;
+}
+
+/* ================= MAIN HERO ================= */
+.neo-layout {
+    display: grid;
+    grid-template-columns: 250px 260px 1fr;
+    gap: 34px;
+    align-items: start;
+    margin-top: 12px;
+    margin-bottom: 34px;
+}
+
+/* ================= LEFT CONTROL MOCKUP ================= */
+.left-panel {
+    min-height: 520px;
+}
+
+.vertical-bars {
+    display: flex;
+    gap: 24px;
+    align-items: end;
+    justify-content: center;
+    margin: 35px 0 18px 0;
+}
+
+.v-track {
+    width: 42px;
+    height: 205px;
+    border-radius: 25px;
+    background: #e9eef8;
+    box-shadow:
+        inset 8px 8px 14px #cbd0da,
+        inset -8px -8px 14px #ffffff;
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    padding-bottom: 15px;
+}
+
+.v-fill {
+    width: 42px;
+    border-radius: 25px;
+    background: #123b6d;
+    box-shadow:
+        6px 6px 14px #c2c8d2,
+        -6px -6px 14px #ffffff;
+}
+
+.dot-row {
+    display: flex;
+    gap: 28px;
+    justify-content: center;
+    margin-bottom: 35px;
+}
+
+.dot {
+    width: 43px;
+    height: 43px;
+    border-radius: 50%;
+    background: #e9eef8;
+    box-shadow:
+        7px 7px 12px #c7ccd5,
+        -7px -7px 12px #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.dot-inner {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #123b6d;
+}
+
+.product-card {
+    background: #e9eef8;
+    border-radius: 22px;
+    padding: 22px;
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    box-shadow:
+        10px 10px 22px #c7ccd5,
+        -10px -10px 22px #ffffff;
+    margin-bottom: 34px;
+}
+
+.product-image {
+    width: 82px;
+    height: 82px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #004b86, #0e6ea7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #8ed6ff;
+    font-size: 38px;
+}
+
+.product-name {
+    font-size: 19px;
+    color: #777d8b;
+    font-weight: 700;
+}
+
+.product-price {
+    font-size: 23px;
+    color: #14345f;
+    font-weight: 900;
+}
+
+.music-line {
+    height: 6px;
+    border-radius: 20px;
+    background: #d7dde8;
+    box-shadow:
+        inset 3px 3px 6px #c4c9d2,
+        inset -3px -3px 6px #ffffff;
+    margin: 10px 0 22px 0;
+    position: relative;
+}
+
+.music-line::before {
+    content: "";
+    width: 88px;
+    height: 6px;
+    background: #123b6d;
+    border-radius: 20px;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.player-row {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+}
+
+.player-btn {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #e9eef8;
+    box-shadow:
+        7px 7px 13px #c7ccd5,
+        -7px -7px 13px #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #123b6d;
+    font-size: 20px;
+}
+
+.player-btn.active {
+    background: #123b6d;
+    color: white;
+}
+
+/* ================= MIDDLE PANEL ================= */
+.middle-panel {
+    min-height: 520px;
+}
+
+.rating-card {
+    border-radius: 22px;
+    background: #e9eef8;
+    box-shadow:
+        10px 10px 22px #c7ccd5,
+        -10px -10px 22px #ffffff;
+    padding: 20px;
+    margin-bottom: 34px;
+}
+
+.rating-title {
+    font-size: 20px;
+    color: #7a808d;
+    margin-bottom: 14px;
+}
+
+.rating-line {
+    height: 1px;
+    background: #d4d9e3;
+    margin-bottom: 18px;
+}
+
+.stars {
+    font-size: 22px;
+    color: #123b6d;
+    letter-spacing: 2px;
+}
+
+.rating-score {
+    float: right;
+    color: #737b89;
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.rating-list {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 12px;
+    color: #7a808d;
+    font-size: 14px;
+}
+
+.rating-footer {
+    margin: 22px -20px -20px -20px;
+    background: #123b6d;
+    color: white;
+    height: 58px;
+    border-radius: 0 0 22px 22px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 19px;
+}
+
+.chat-card {
+    border-radius: 18px;
+    background: #e9eef8;
+    box-shadow:
+        8px 8px 18px #c7ccd5,
+        -8px -8px 18px #ffffff;
+    padding: 18px;
+    margin-bottom: 28px;
+    color: #777d8b;
+    min-height: 82px;
+}
+
+.chat-bubble {
+    background: #123b6d;
+    color: white;
+    padding: 13px 18px;
+    border-radius: 14px 14px 0 14px;
+    width: fit-content;
+    margin-left: auto;
+    box-shadow:
+        5px 5px 12px #c7ccd5,
+        -5px -5px 12px #ffffff;
+}
+
+.dots-bubble {
+    width: 80px;
+    height: 54px;
+    border-radius: 15px 15px 15px 0;
+    background: #e9eef8;
+    box-shadow:
+        8px 8px 18px #c7ccd5,
+        -8px -8px 18px #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #777d8b;
+    letter-spacing: 4px;
+}
+
+/* ================= RIGHT PANEL ================= */
+.right-panel {
+    min-height: 520px;
+}
+
+.button-grid {
+    display: grid;
+    grid-template-columns: 150px repeat(5, 48px);
+    gap: 22px 24px;
+    align-items: center;
+    margin-top: 34px;
+    margin-bottom: 34px;
+}
+
+.neo-pill {
+    height: 43px;
+    border-radius: 22px;
+    background: #e9eef8;
+    box-shadow:
+        7px 7px 14px #c7ccd5,
+        -7px -7px 14px #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #7a808d;
+    font-weight: 700;
+}
+
+.neo-pill.active {
+    background: #123b6d;
+    color: white;
+}
+
+.icon-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e9eef8;
+    box-shadow:
+        7px 7px 14px #c7ccd5,
+        -7px -7px 14px #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #123b6d;
+    font-size: 19px;
+}
+
+.icon-btn.active {
+    background: #123b6d;
+    color: white;
+}
+
+.search-box {
+    height: 46px;
+    border-radius: 25px;
+    background: #e9eef8;
+    box-shadow:
+        inset 5px 5px 10px #c7ccd5,
+        inset -5px -5px 10px #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #838b9a;
+    font-size: 18px;
+    margin: 30px 120px 34px 0;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 34px;
+    margin-bottom: 34px;
+}
+
+.toggle {
+    width: 75px;
+    height: 33px;
+    border-radius: 20px;
+    background: #e9eef8;
+    box-shadow:
+        inset 5px 5px 10px #c7ccd5,
+        inset -5px -5px 10px #ffffff;
+    position: relative;
+}
+
+.toggle::before {
+    content: "";
+    width: 43px;
+    height: 43px;
+    border-radius: 50%;
+    background: #e9eef8;
+    position: absolute;
+    top: -5px;
+    left: 0;
+    box-shadow:
+        7px 7px 14px #c7ccd5,
+        -7px -7px 14px #ffffff;
+}
+
+.toggle.active {
+    background: #123b6d;
+}
+
+.toggle.active::before {
+    left: 32px;
+}
+
+.share-btn {
+    width: 130px;
+    height: 43px;
+    border-radius: 22px;
+    background: #e9eef8;
+    box-shadow:
+        7px 7px 14px #c7ccd5,
+        -7px -7px 14px #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #7a808d;
+    font-size: 18px;
+}
+
+.percent-bubble {
+    width: 105px;
+    height: 55px;
+    border-radius: 20px;
+    background: #e9eef8;
+    box-shadow:
+        7px 7px 14px #c7ccd5,
+        -7px -7px 14px #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #123b6d;
+    font-size: 18px;
+    margin: 24px auto 18px auto;
+}
+
+.progress-line {
+    height: 15px;
+    border-radius: 20px;
+    background: #d7dde8;
+    box-shadow:
+        inset 5px 5px 10px #c7ccd5,
+        inset -5px -5px 10px #ffffff;
+    position: relative;
+}
+
+.progress-line::before {
+    content: "";
+    width: 50%;
+    height: 15px;
+    border-radius: 20px;
+    background: #123b6d;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* ================= REAL STREAMLIT FORM ================= */
+.form-shell {
+    border-radius: 25px;
+    background: #e9eef8;
+    box-shadow:
+        10px 10px 22px #c7ccd5,
+        -10px -10px 22px #ffffff;
+    padding: 24px;
+    margin: 24px 0 28px 0;
+}
+
+.result-shell {
+    border-radius: 25px;
+    background: #e9eef8;
+    box-shadow:
+        10px 10px 22px #c7ccd5,
+        -10px -10px 22px #ffffff;
+    padding: 24px;
+    margin-top: 26px;
+}
+
+.reco-card {
+    border-radius: 20px;
+    background: #e9eef8;
+    box-shadow:
+        8px 8px 16px #c7ccd5,
+        -8px -8px 16px #ffffff;
+    padding: 18px;
+    margin-bottom: 16px;
+}
+
+.reco-title {
+    color: #123b6d;
+    font-weight: 900;
+    font-size: 18px;
+}
+
+.reco-meta {
+    color: #6e7584;
+    margin-top: 8px;
+}
+
+/* ================= STREAMLIT COMPONENTS ================= */
+.stMultiSelect div[data-baseweb="select"] > div {
+    background: #e9eef8 !important;
+    border-radius: 18px !important;
+    border: none !important;
+    box-shadow:
+        inset 5px 5px 10px #c7ccd5,
+        inset -5px -5px 10px #ffffff;
+    color: #14345f !important;
+}
+
+.stButton > button {
+    width: 100%;
+    height: 46px;
+    border-radius: 25px;
+    border: none;
+    background: #123b6d;
+    color: white;
+    font-weight: 900;
+    box-shadow:
+        7px 7px 14px #c7ccd5,
+        -7px -7px 14px #ffffff;
+    transition: 0.2s;
+}
+
+.stButton > button:hover {
+    background: #0c2f59;
+    color: white;
+    transform: scale(1.01);
+}
+
+[data-testid="stDataFrame"] {
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow:
+        8px 8px 16px #c7ccd5,
+        -8px -8px 16px #ffffff;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 1000px) {
+    .neo-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .button-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .search-box {
+        margin-right: 0;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# =====================================================
+# HELPER FUNCTIONS
+# =====================================================
+def parse_itemset(value):
+    """
+    แปลงข้อความจาก CSV ให้เป็น frozenset
+    รองรับ:
+    - frozenset({'A', 'B'})
+    - {'A', 'B'}
+    - ['A', 'B']
+    - ('A', 'B')
+    - A
+    """
+    if isinstance(value, frozenset):
+        return value
+
+    if isinstance(value, (set, list, tuple)):
+        return frozenset(value)
+
+    if pd.isna(value):
+        return frozenset()
+
+    text = str(value).strip()
+
+    if text == "" or text.lower() == "nan":
+        return frozenset()
+
+    try:
+        if text.startswith("frozenset"):
+            match = re.match(r"^frozenset\\((.*)\\)$", text)
+            if match:
+                inner = match.group(1).strip()
+                if inner == "":
+                    return frozenset()
+
+                parsed = ast.literal_eval(inner)
+
+                if isinstance(parsed, (set, list, tuple, frozenset)):
+                    return frozenset(parsed)
+
+                return frozenset([parsed])
+
+        if text.startswith("[") or text.startswith("{") or text.startswith("("):
+            parsed = ast.literal_eval(text)
+
+            if isinstance(parsed, (set, list, tuple, frozenset)):
+                return frozenset(parsed)
+
+            return frozenset([parsed])
+
+        return frozenset([text])
+
+    except Exception:
+        return frozenset([text])
+
+
+def itemset_to_text(itemset):
+    if itemset is None:
+        return "-"
+
+    if isinstance(itemset, str):
+        return itemset
+
+    try:
+        items = sorted([str(item) for item in itemset])
+        if len(items) == 0:
+            return "-"
+        return ", ".join(items)
+    except Exception:
+        return str(itemset)
+
+
+def get_item_type(item):
+    if item in all_regions:
+        return "Region"
+
+    if item in all_products:
+        return "Product"
+
+    if item in all_channels:
+        return "Channel"
+
+    return "Item"
+
+
+def get_recommendations(user_selected_items, rules_df, top_n=5):
+    potential_recommendations = []
+
+    for _, rule in rules_df.iterrows():
+        rule_antecedents = rule["antecedents"]
+        rule_consequents = rule["consequents"]
+
         if rule_antecedents.issubset(user_selected_items):
-            # แนะนำรายการจาก Consequents ที่ผู้ใช้ยังไม่ได้เลือก
             for rec_item in rule_consequents:
                 if rec_item not in user_selected_items:
-                    potential_recommendations.append({ # เพิ่มรายการที่แนะนำ พร้อมค่า Confidence และ Lift
-                        'item': rec_item,
-                        'confidence': rule['confidence'],
-                        'lift': rule['lift']
+                    potential_recommendations.append({
+                        "item": rec_item,
+                        "confidence": float(rule["confidence"]),
+                        "lift": float(rule["lift"]),
+                        "support": float(rule["support"]) if "support" in rule else 0,
+                        "antecedents": rule_antecedents,
+                        "consequents": rule_consequents
                     })
 
-    # เรียงลำดับคำแนะนำตามค่า Lift (จากมากไปน้อย) และ Confidence (จากมากไปน้อย) เพื่อให้คำแนะนำที่มีความสัมพันธ์แข็งแกร่งที่สุดขึ้นมาก่อน
-    sorted_recs = sorted(potential_recommendations, key=lambda x: (x['lift'], x['confidence']), reverse=True)
+    sorted_recs = sorted(
+        potential_recommendations,
+        key=lambda x: (x["lift"], x["confidence"]),
+        reverse=True
+    )
 
-    # ดึงรายการแนะนำที่ไม่ซ้ำกัน สูงสุดตามจำนวน top_n ที่กำหนด
-    final_recs = [] # List สำหรับเก็บคำแนะนำสุดท้าย
-    seen_items = set() # Set สำหรับตรวจสอบรายการที่ถูกแนะนำไปแล้ว เพื่อป้องกันการซ้ำซ้อน
+    final_recs = []
+    seen_items = set()
+
     for rec in sorted_recs:
-        if rec['item'] not in seen_items: # ถ้ายังไม่เคยแนะนำรายการนี้
-            final_recs.append(rec['item']) # เพิ่มลงในรายการแนะนำสุดท้าย
-            seen_items.add(rec['item']) # เพิ่มลงใน Set ของรายการที่ถูกแนะนำไปแล้ว
-        if len(final_recs) >= top_n: # ถ้าได้จำนวนคำแนะนำครบตาม top_n แล้ว
-            break # ออกจากลูป
+        if rec["item"] not in seen_items:
+            final_recs.append(rec)
+            seen_items.add(rec["item"])
 
-    return final_recs # ส่งคืนรายการคำแนะนำ
+        if len(final_recs) >= top_n:
+            break
 
-# --- 4. Streamlit App Layout ---
-st.set_page_config(layout="wide", page_title="TCP Recommendation", page_icon="🛒") # ตั้งค่าเลย์เอาต์และชื่อหน้าเว็บ
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: #f0f2f6; /* Light grey background */
-        color: #31333F;
-    }
-    .st-emotion-cache-1gsv4o2 {
-        background-color: #f0f2f6;
+    return final_recs
 
-    }
-    .st-emotion-cache-1jm69f1 {
-        background-color: #f0f2f6;
-    }
-    h1, h2, h3, h4, h5, h6 {
-        color: #B10020; /* Red color for headers */
-    }
-    .stButton>button {
-        background-color: #B10020; /* Red button */
-        color: white;
-        border-radius: 5px;
-        border: none;
-        padding: 10px 20px;
-    }
-    .stButton>button:hover {
-        background-color: #8C0018; /* Darker red on hover */
-        color: white;
-    }
-    .reportview-container .main .block-container{padding-top:1rem;padding-right:1rem;padding-left:1rem;padding-bottom:1rem;}
-    </style>
-    """, unsafe_allow_html=True
-) # Custom CSS
 
-st.title("🛒 TCP Behavioral Association Recommendation") # ตั้งชื่อแอปพลิเคชัน พร้อมระบุ TCP
-st.markdown("--- ให้ระบบแนะนำสินค้า/ช่องทาง/ภูมิภาคอื่น ๆ ที่ลูกค้ามีแนวโน้มจะสนใจ จากกฎความสัมพันธ์ --- ") # เพิ่มข้อความอธิบาย
+def make_rules_display(df):
+    display_df = df.copy()
+    display_df["Antecedents"] = display_df["antecedents"].apply(itemset_to_text)
+    display_df["Consequents"] = display_df["consequents"].apply(itemset_to_text)
 
-st.subheader("เลือกรายการที่สนใจ:") # หัวข้อย่อยสำหรับส่วนที่ผู้ใช้เลือกข้อมูล
+    cols = ["Antecedents", "Consequents"]
 
-# Multiselect component สำหรับเลือกภูมิภาค
-selected_regions = st.multiselect(
-    "เลือกภูมิภาค (Region)", # ข้อความแสดงผล
-    options=unique_regions, # ตัวเลือกจาก unique_regions ที่ดึงมา
-    default=[] # ค่าเริ่มต้นเป็น List ว่าง
+    if "support" in display_df.columns:
+        cols.append("support")
+
+    cols += ["confidence", "lift"]
+
+    display_df = display_df[cols].rename(columns={
+        "support": "Support",
+        "confidence": "Confidence",
+        "lift": "Lift"
+    })
+
+    return display_df
+
+
+# =====================================================
+# LOAD ASSOCIATION RULES
+# =====================================================
+@st.cache_data
+def load_rules():
+    try:
+        rules = pd.read_csv("model/Model_association_Rules.csv")
+
+        required_cols = ["antecedents", "consequents", "confidence", "lift"]
+        missing_cols = [col for col in required_cols if col not in rules.columns]
+
+        if missing_cols:
+            st.error(f"❌ ไฟล์ CSV ขาดคอลัมน์: {', '.join(missing_cols)}")
+            return pd.DataFrame()
+
+        rules["antecedents"] = rules["antecedents"].apply(parse_itemset)
+        rules["consequents"] = rules["consequents"].apply(parse_itemset)
+
+        return rules
+
+    except FileNotFoundError:
+        st.error("❌ ไม่พบไฟล์ `model/Model_association_Rules.csv` กรุณาตรวจสอบ path ไฟล์")
+        return pd.DataFrame()
+
+    except Exception as e:
+        st.error(f"❌ โหลดข้อมูลไม่สำเร็จ: {e}")
+        return pd.DataFrame()
+
+
+df_rules_app = load_rules()
+
+if df_rules_app.empty:
+    st.stop()
+
+
+# =====================================================
+# CATEGORY DATA
+# =====================================================
+all_regions_master = [
+    "USA-WEST",
+    "ASIA-PACIFIC",
+    "TH-NORTH",
+    "TH-CENTRAL",
+    "EUROPE-EU",
+    "USA-EAST",
+    "TH-SOUTH"
+]
+
+all_products_master = [
+    "Tropical Edition",
+    "Original Blue",
+    "Sugarfree",
+    "Krating Daeng 250",
+    "Red Edition"
+]
+
+all_channels_master = [
+    "extreme sports",
+    "f1 sponsorship",
+    "TV Ad",
+    "in-store promo",
+    "Social Media"
+]
+
+all_items_in_rules = (
+    {x for s in df_rules_app["antecedents"] for x in s}
+    .union({x for s in df_rules_app["consequents"] for x in s})
 )
 
-# Multiselect component สำหรับเลือกประเภทสินค้า
-selected_products = st.multiselect(
-    "เลือกประเภทสินค้า (Product Variant)",
-    options=unique_products,
-    default=[]
-)
+all_regions = sorted([item for item in all_regions_master if item in all_items_in_rules])
+all_products = sorted([item for item in all_products_master if item in all_items_in_rules])
+all_channels = sorted([item for item in all_channels_master if item in all_items_in_rules])
 
-# Multiselect component สำหรับเลือกช่องทาง
-selected_channels = st.multiselect(
-    "เลือกช่องทาง (Channel)",
-    options=unique_channels,
-    default=[]
-)
 
-# รวมรายการที่ผู้ใช้เลือกทั้งหมดเข้าด้วยกัน และแปลงเป็น frozenset เพื่อใช้เป็น Antecedents ในฟังก์ชันแนะนำ
+# =====================================================
+# TOP UI MOCKUP
+# =====================================================
+st.markdown("""
+<div class="top-bar">
+    <div class="logo-circle">👑</div>
+    <div class="top-title">TCP Behavioral Association Recommendation</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="neo-layout">
+
+    <div class="left-panel">
+        <div class="vertical-bars">
+            <div class="v-track"><div class="v-fill" style="height: 98px;"></div></div>
+            <div class="v-track"><div class="v-fill" style="height: 154px;"></div></div>
+            <div class="v-track"><div class="v-fill" style="height: 52px;"></div></div>
+        </div>
+
+        <div class="dot-row">
+            <div class="dot"><div class="dot-inner"></div></div>
+            <div class="dot"><div class="dot-inner"></div></div>
+            <div class="dot"><div class="dot-inner"></div></div>
+        </div>
+
+        <div class="product-card">
+            <div class="product-image">🛒</div>
+            <div>
+                <div class="product-name">TCP</div>
+                <div class="product-price">AI</div>
+            </div>
+        </div>
+
+        <div class="music-line"></div>
+
+        <div class="player-row">
+            <div class="player-btn">‹</div>
+            <div class="player-btn active">▷</div>
+            <div class="player-btn">›</div>
+        </div>
+    </div>
+
+    <div class="middle-panel">
+        <div class="rating-card">
+            <div class="rating-title">recommendation</div>
+            <div class="rating-line"></div>
+            <div>
+                <span class="stars">★ ★ ★</span>
+                <span style="color:#c8ced8;">★ ★</span>
+                <span class="rating-score">3/5</span>
+            </div>
+
+            <div class="rating-list">
+                <div>region</div><div>good</div>
+                <div>product</div><div>excellent</div>
+                <div>channel</div><div>not bad</div>
+            </div>
+
+            <div class="rating-footer">TCP recommendation</div>
+        </div>
+
+        <div class="chat-card">
+            <b>Hi!</b><br>
+            what I can help you?
+        </div>
+
+        <div class="chat-bubble">Hi! there</div>
+
+        <br>
+
+        <div class="dots-bubble">••••</div>
+    </div>
+
+    <div class="right-panel">
+        <div class="button-grid">
+            <div class="neo-pill">button</div>
+            <div class="icon-btn">≡</div>
+            <div class="icon-btn">⌂</div>
+            <div class="icon-btn">♧</div>
+            <div class="icon-btn">♡</div>
+            <div class="icon-btn">▱</div>
+
+            <div class="neo-pill">button</div>
+            <div class="icon-btn">≡</div>
+            <div class="icon-btn">⌂</div>
+            <div class="icon-btn">♧</div>
+            <div class="icon-btn">♡</div>
+            <div class="icon-btn">▱</div>
+
+            <div class="neo-pill active">button</div>
+            <div class="icon-btn active">≡</div>
+            <div class="icon-btn active">⌂</div>
+            <div class="icon-btn active">♧</div>
+            <div class="icon-btn active">♡</div>
+            <div class="icon-btn active">▱</div>
+
+            <div class="neo-pill">button</div>
+            <div class="icon-btn">≡</div>
+            <div class="icon-btn">⌂</div>
+            <div class="icon-btn">♧</div>
+            <div class="icon-btn">♡</div>
+            <div class="icon-btn">▱</div>
+        </div>
+
+        <div class="search-box">search for 🔍</div>
+
+        <div class="toggle-row">
+            <div class="toggle"></div>
+            <div class="toggle active"></div>
+            <div class="dot"><div class="dot-inner"></div></div>
+            <div class="dot"></div>
+            <div class="share-btn">⌘ share</div>
+        </div>
+
+        <div class="percent-bubble">50%</div>
+        <div class="progress-line"></div>
+    </div>
+
+</div>
+""", unsafe_allow_html=True)
+
+
+# =====================================================
+# REAL INPUT FORM
+# =====================================================
+st.markdown("""
+<div class="form-shell">
+    <h2>🛒 เลือกรายการที่สนใจ</h2>
+    <p>ให้ระบบแนะนำสินค้า / ช่องทาง / ภูมิภาคอื่น ๆ ที่ลูกค้ามีแนวโน้มสนใจ จากกฎความสัมพันธ์</p>
+</div>
+""", unsafe_allow_html=True)
+
+col_region, col_product, col_channel = st.columns(3)
+
+with col_region:
+    selected_regions = st.multiselect(
+        "เลือกภูมิภาค (Region)",
+        options=all_regions,
+        default=[]
+    )
+
+with col_product:
+    selected_products = st.multiselect(
+        "เลือกประเภทสินค้า (Product Variant)",
+        options=all_products,
+        default=[]
+    )
+
+with col_channel:
+    selected_channels = st.multiselect(
+        "เลือกช่องทาง (Channel)",
+        options=all_channels,
+        default=[]
+    )
+
 user_input_items = frozenset(selected_regions + selected_products + selected_channels)
 
-# ปุ่มสำหรับเรียกใช้การแนะนำ
-if st.button("💡 แนะนำ!"):
-    if user_input_items: # ถ้าผู้ใช้เลือกรายการอย่างน้อยหนึ่งรายการ
-        st.subheader("ผลการแนะนำ:") # หัวข้อย่อยสำหรับผลการแนะนำ
-        recommendations = get_recommendations(user_input_items, df_rules_app) # เรียกใช้ฟังก์ชันแนะนำ
 
-        if recommendations: # ถ้ามีคำแนะนำ
-            st.success("ระบบแนะนำรายการต่อไปนี้:") # แสดงข้อความสำเร็จ
-            for i, rec in enumerate(recommendations): # วนลูปแสดงผลคำแนะนำ
-                # แสดงผลคำแนะนำ โดยแทนที่ Prefix ให้เป็นข้อความที่อ่านง่ายขึ้น
-                display_text = rec
-                if rec in all_regions:
-                    display_text = f"Region: {rec}"
-                elif rec in all_products:
-                    display_text = f"Product: {rec}"
-                elif rec in all_channels:
-                    display_text = f"Channel: {rec}"
-                st.write(f"**{i+1}. {display_text}**")
-        else:
-            st.info("ไม่พบกฎการแนะนำสำหรับรายการที่คุณเลือก โปรดลองเลือกรายการอื่น ๆ") # ถ้าไม่พบคำแนะนำ
+# =====================================================
+# RECOMMENDATION
+# =====================================================
+if st.button("💡 แนะนำ!", use_container_width=True):
+    if not user_input_items:
+        st.warning("กรุณาเลือกอย่างน้อยหนึ่งรายการเพื่อรับคำแนะนำ")
+
     else:
-        st.warning("กรุณาเลือกอย่างน้อยหนึ่งรายการเพื่อรับคำแนะนำ") # แจ้งเตือนถ้าผู้ใช้ไม่ได้เลือกอะไรเลย
+        recommendations = get_recommendations(
+            user_selected_items=user_input_items,
+            rules_df=df_rules_app,
+            top_n=5
+        )
+
+        st.markdown("""
+        <div class="result-shell">
+            <h2>ผลการแนะนำ</h2>
+            <p>รายการที่ระบบพบว่ามีความสัมพันธ์สูงกับสิ่งที่คุณเลือก</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        selected_display = ", ".join([escape(str(item)) for item in user_input_items])
+        st.info(f"รายการที่เลือก: {selected_display}")
+
+        if recommendations:
+            for i, rec in enumerate(recommendations, start=1):
+                item = rec["item"]
+                item_type = get_item_type(item)
+                item_text = escape(str(item))
+
+                st.markdown(f"""
+                <div class="reco-card">
+                    <div class="reco-title">{i}. {item_type}: {item_text}</div>
+                    <div class="reco-meta">
+                        Confidence: {rec["confidence"]:.3f} |
+                        Lift: {rec["lift"]:.3f} |
+                        Support: {rec["support"]:.3f}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        else:
+            st.info("ไม่พบกฎการแนะนำสำหรับรายการที่คุณเลือก โปรดลองเลือกรายการอื่น ๆ")
 
 
-if st.button("🏠 กลับหน้าหลัก"):
+# =====================================================
+# RULES TABLE
+# =====================================================
+with st.expander("🔍 ดูกฎความสัมพันธ์ทั้งหมด"):
+    display_rules = make_rules_display(df_rules_app)
+
+    format_dict = {
+        "Confidence": "{:.3f}",
+        "Lift": "{:.3f}"
+    }
+
+    if "Support" in display_rules.columns:
+        format_dict["Support"] = "{:.3f}"
+
+    st.dataframe(
+        display_rules.style.format(format_dict),
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+# =====================================================
+# BACK HOME
+# =====================================================
+st.markdown("---")
+
+if st.button("🏠 กลับหน้าหลัก", use_container_width=True):
     st.switch_page("app.py")
