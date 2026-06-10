@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import ast
 import re
+from html import escape
 
 # =====================================================
 # PAGE CONFIG
@@ -27,7 +28,7 @@ st.markdown("""
 }
 
 .block-container {
-    max-width: 1200px;
+    max-width: 1240px;
     padding-top: 1rem;
     padding-bottom: 2rem;
 }
@@ -81,6 +82,8 @@ h1, h2, h3, p, label, span, div {
     grid-template-columns: 280px 1fr 320px;
     gap: 36px;
     align-items: center;
+    margin-top: 20px;
+    margin-bottom: 34px;
 }
 
 /* ================= PHONE MOCKUP ================= */
@@ -137,7 +140,7 @@ h1, h2, h3, p, label, span, div {
 .mockup-subtitle {
     text-align: center;
     font-size: 15px;
-    letter-spacing: 5px;
+    letter-spacing: 4px;
     opacity: 0.85;
     margin-bottom: 20px;
 }
@@ -151,14 +154,15 @@ h1, h2, h3, p, label, span, div {
 
 .phone-input {
     background: linear-gradient(90deg, #ff5f9c, #ff2d78);
-    height: 26px;
+    min-height: 26px;
     border-radius: 20px;
     margin-bottom: 12px;
     font-size: 10px;
     display: flex;
     align-items: center;
-    padding-left: 14px;
+    padding: 3px 14px;
     box-shadow: 0 8px 18px rgba(235,40,120,0.25);
+    overflow-wrap: anywhere;
 }
 
 .phone-login {
@@ -205,7 +209,7 @@ h1, h2, h3, p, label, span, div {
     justify-content: center;
 }
 
-/* ================= CENTER ROOM CARD ================= */
+/* ================= CENTER CARDS ================= */
 .room-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(160px, 1fr));
@@ -239,8 +243,10 @@ h1, h2, h3, p, label, span, div {
 
 .room-sub {
     font-size: 11px;
-    opacity: 0.75;
+    opacity: 0.80;
     margin-top: 5px;
+    text-align: center;
+    padding: 0 8px;
 }
 
 /* ================= RIGHT PANEL ================= */
@@ -256,6 +262,7 @@ h1, h2, h3, p, label, span, div {
     font-size: 15px;
     font-weight: 800;
     margin-bottom: 20px;
+    text-align: center;
 }
 
 .feature-buttons {
@@ -342,7 +349,7 @@ h1, h2, h3, p, label, span, div {
     font-size: 15px;
 }
 
-/* ================= STREAMLIT INPUT STYLE ================= */
+/* ================= STREAMLIT COMPONENTS ================= */
 .stSelectbox > div > div {
     background: rgba(255,255,255,0.16);
     border-radius: 16px;
@@ -404,6 +411,7 @@ h1, h2, h3, p, label, span, div {
 
 .badge-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 12px;
 }
@@ -441,10 +449,12 @@ h1, h2, h3, p, label, span, div {
 def parse_itemset(value):
     """
     แปลงค่า antecedents / consequents จาก CSV ให้เป็น frozenset
-    รองรับรูปแบบ:
+    แต่ตอนแสดงผลจะใช้ itemset_to_text() เพื่อไม่ให้เห็นคำว่า frozenset
+    รองรับ:
     - frozenset({'A', 'B'})
     - ['A', 'B']
     - {'A', 'B'}
+    - ('A', 'B')
     - A
     """
     if isinstance(value, frozenset):
@@ -456,20 +466,40 @@ def parse_itemset(value):
     if isinstance(value, list):
         return frozenset(value)
 
+    if isinstance(value, tuple):
+        return frozenset(value)
+
     if pd.isna(value):
         return frozenset()
 
     text = str(value).strip()
 
+    if text == "" or text.lower() == "nan":
+        return frozenset()
+
     try:
         if text.startswith("frozenset"):
-            inner = re.sub(r"^frozenset\\((.*)\\)$", r"\\1", text)
-            parsed = ast.literal_eval(inner)
-            return frozenset(parsed)
+            match = re.match(r"^frozenset\\((.*)\\)$", text)
+            if match:
+                inner = match.group(1).strip()
+
+                if inner == "":
+                    return frozenset()
+
+                parsed = ast.literal_eval(inner)
+
+                if isinstance(parsed, (set, list, tuple, frozenset)):
+                    return frozenset(parsed)
+
+                return frozenset([parsed])
 
         if text.startswith("[") or text.startswith("{") or text.startswith("("):
             parsed = ast.literal_eval(text)
-            return frozenset(parsed)
+
+            if isinstance(parsed, (set, list, tuple, frozenset)):
+                return frozenset(parsed)
+
+            return frozenset([parsed])
 
         return frozenset([text])
 
@@ -478,9 +508,44 @@ def parse_itemset(value):
 
 
 def itemset_to_text(itemset):
-    if not itemset:
+    """
+    แปลง frozenset({'A'}) ให้เป็น A
+    แปลง frozenset({'A', 'B'}) ให้เป็น A, B
+    """
+    if itemset is None:
         return "-"
-    return ", ".join([str(item) for item in itemset])
+
+    if isinstance(itemset, str):
+        return itemset
+
+    try:
+        items = sorted([str(item) for item in itemset])
+        if len(items) == 0:
+            return "-"
+        return ", ".join(items)
+
+    except Exception:
+        return str(itemset)
+
+
+def make_display_table(df):
+    """
+    สร้างตารางสำหรับแสดงผล โดยไม่โชว์ frozenset
+    """
+    display_df = df.copy()
+
+    display_df["สินค้าหลัก"] = display_df["antecedents"].apply(itemset_to_text)
+    display_df["สินค้าแนะนำ"] = display_df["consequents"].apply(itemset_to_text)
+
+    display_df = display_df[
+        ["สินค้าหลัก", "สินค้าแนะนำ", "support", "confidence", "lift"]
+    ].rename(columns={
+        "support": "Support",
+        "confidence": "Confidence",
+        "lift": "Lift"
+    })
+
+    return display_df
 
 
 # =====================================================
@@ -519,7 +584,7 @@ df_rules = load_rules()
 
 
 # =====================================================
-# HEADER DASHBOARD
+# HEADER
 # =====================================================
 st.markdown("""
 <div class="top-bar">
@@ -574,12 +639,14 @@ else:
 
 degree = int(gauge_value / 100 * 270)
 
+selected_text = escape(str(selected_antecedent))
+
 
 # =====================================================
 # MAIN VISUAL AREA
 # =====================================================
 card_items = [
-    ("🛒", "Product", selected_antecedent, "สินค้าที่เลือก"),
+    ("🛒", "Product", selected_text, "สินค้าที่เลือก"),
     ("🎁", "Bundle", "Top 5", "สินค้าแนะนำ"),
     ("📊", "Confidence", f"{top_confidence:.2f}", "โอกาสซื้อคู่กัน"),
     ("🚀", "Lift", f"{top_lift:.2f}", "ความสัมพันธ์"),
@@ -613,7 +680,7 @@ st.markdown(f"""
             <div class="mockup-subtitle">smart basket</div>
 
             <div class="phone-label">Product name</div>
-            <div class="phone-input">{selected_antecedent}</div>
+            <div class="phone-input">{selected_text}</div>
 
             <div class="phone-label">Recommendation</div>
             <div class="phone-input">Market Basket AI</div>
@@ -637,7 +704,7 @@ st.markdown(f"""
 
     <div class="right-panel">
         <div class="room-select-title">
-            <span>{selected_antecedent}</span>
+            <span>{selected_text}</span>
             <span>⌄</span>
         </div>
 
@@ -685,8 +752,8 @@ if not recommendation_rules.empty:
     st.subheader(f"✅ คำแนะนำสำหรับ: {selected_antecedent}")
 
     for _, row in recommendation_rules.head(5).iterrows():
-        antecedents_str = itemset_to_text(row["antecedents"])
-        consequents_str = itemset_to_text(row["consequents"])
+        antecedents_str = escape(itemset_to_text(row["antecedents"]))
+        consequents_str = escape(itemset_to_text(row["consequents"]))
 
         st.markdown(f"""
         <div class="reco-card">
@@ -705,15 +772,7 @@ if not recommendation_rules.empty:
     st.markdown("---")
     st.subheader("📊 รายละเอียดคำแนะนำทั้งหมด")
 
-    display_reco = recommendation_rules[
-        ["antecedents_text", "consequents_text", "support", "confidence", "lift"]
-    ].head(10).rename(columns={
-        "antecedents_text": "สินค้าหลัก",
-        "consequents_text": "สินค้าแนะนำ",
-        "support": "Support",
-        "confidence": "Confidence",
-        "lift": "Lift"
-    })
+    display_reco = make_display_table(recommendation_rules.head(10))
 
     st.dataframe(
         display_reco.style.format({
@@ -721,7 +780,8 @@ if not recommendation_rules.empty:
             "Confidence": "{:.3f}",
             "Lift": "{:.3f}"
         }),
-        use_container_width=True
+        use_container_width=True,
+        hide_index=True
     )
 
 else:
@@ -734,15 +794,7 @@ else:
 st.markdown("---")
 st.subheader("🔍 สำรวจกฎความสัมพันธ์ทั้งหมด")
 
-display_all = df_rules[
-    ["antecedents_text", "consequents_text", "support", "confidence", "lift"]
-].rename(columns={
-    "antecedents_text": "สินค้าหลัก",
-    "consequents_text": "สินค้าแนะนำ",
-    "support": "Support",
-    "confidence": "Confidence",
-    "lift": "Lift"
-})
+display_all = make_display_table(df_rules)
 
 st.dataframe(
     display_all.style.format({
@@ -750,7 +802,8 @@ st.dataframe(
         "Confidence": "{:.3f}",
         "Lift": "{:.3f}"
     }),
-    use_container_width=True
+    use_container_width=True,
+    hide_index=True
 )
 
 
