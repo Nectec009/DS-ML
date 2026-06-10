@@ -1,403 +1,354 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import numpy as np
 
-# ================= PAGE CONFIG =================
+# =====================================================
+# PAGE CONFIG
+# =====================================================
 st.set_page_config(
     page_title="Market Segmentation Tactical UI",
     page_icon="🟧",
     layout="wide"
 )
 
-# ================= UI STYLE แบบภาพตัวอย่าง =================
-st.markdown("""
-<style># ================= UI STYLE WITH SWITCH THEME =================
+
+# =====================================================
+# THEME SWITCHER
+# =====================================================
+themes = {
+    "orange": {
+        "name": "🟧 ORANGE NEON",
+        "bg": "#17172b",
+        "panel": "#101026",
+        "card": "#0c0b22",
+        "border": "#32244c",
+        "primary": "#ff8a00",
+        "secondary": "#ff3d00",
+        "success": "#00ff66",
+        "warning": "#ff8a00",
+        "text": "#e8e6ff",
+        "muted": "#bdb8d9"
+    },
+    "green": {
+        "name": "🟩 TACTICAL GREEN",
+        "bg": "#07130c",
+        "panel": "#0b1f12",
+        "card": "#06150c",
+        "border": "#1f6f3a",
+        "primary": "#a3e635",
+        "secondary": "#22c55e",
+        "success": "#00ff66",
+        "warning": "#facc15",
+        "text": "#eaffea",
+        "muted": "#b7c7b7"
+    },
+    "blue": {
+        "name": "🟦 CYBER BLUE",
+        "bg": "#071225",
+        "panel": "#0b1b33",
+        "card": "#06101f",
+        "border": "#1e3a8a",
+        "primary": "#38bdf8",
+        "secondary": "#2563eb",
+        "success": "#00ffcc",
+        "warning": "#facc15",
+        "text": "#e0f2fe",
+        "muted": "#a9c4d8"
+    },
+    "purple": {
+        "name": "🟪 GALAXY PURPLE",
+        "bg": "#160b2e",
+        "panel": "#21113f",
+        "card": "#120824",
+        "border": "#6d28d9",
+        "primary": "#c084fc",
+        "secondary": "#7c3aed",
+        "success": "#22ff88",
+        "warning": "#f59e0b",
+        "text": "#f3e8ff",
+        "muted": "#c4b5fd"
+    }
+}
+
+if "theme_mode" not in st.session_state:
+    st.session_state.theme_mode = "orange"
+
+theme_keys = list(themes.keys())
+
+with st.sidebar:
+    st.markdown("## 🎨 THEME CONTROL")
+    st.info(f"Current Theme: {themes[st.session_state.theme_mode]['name']}")
+
+    if st.button("🔄 SWITCH COLOR THEME", use_container_width=True):
+        current_index = theme_keys.index(st.session_state.theme_mode)
+        next_index = (current_index + 1) % len(theme_keys)
+        st.session_state.theme_mode = theme_keys[next_index]
+        st.rerun()
+
+theme = themes[st.session_state.theme_mode]
+
+
+# =====================================================
+# CSS STYLE
+# =====================================================
 st.markdown(f"""
 <style>
-/* ===== Main Background ===== */
-.stApp {{
-    background: {theme["bg"]};
-    color: {theme["text"]};
+:root {{
+    --bg: {theme['bg']};
+    --panel: {theme['panel']};
+    --card: {theme['card']};
+    --border: {theme['border']};
+    --primary: {theme['primary']};
+    --secondary: {theme['secondary']};
+    --success: {theme['success']};
+    --warning: {theme['warning']};
+    --text: {theme['text']};
+    --muted: {theme['muted']};
 }}
 
-/* ซ่อนเมนู Streamlit */
-#MainMenu {{visibility: hidden;}}
-footer {{visibility: hidden;}}
-header {{visibility: hidden;}}
+/* ===== Main Background ===== */
+.stApp {{
+    background:
+        radial-gradient(circle at 10% 15%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 25%),
+        radial-gradient(circle at 90% 15%, color-mix(in srgb, var(--secondary) 18%, transparent), transparent 28%),
+        linear-gradient(135deg, var(--bg), #05050f);
+    color: var(--text);
+}}
 
-/* ===== Font Color ===== */
+/* Hide Streamlit Default UI */
+#MainMenu {{
+    visibility: hidden;
+}}
+
+footer {{
+    visibility: hidden;
+}}
+
+header {{
+    visibility: hidden;
+}}
+
+/* Text */
 h1, h2, h3 {{
-    color: {theme["primary"]} !important;
+    color: var(--primary) !important;
     font-weight: 900 !important;
     letter-spacing: 1px;
 }}
 
-p, label, span, div {{
-    color: {theme["text"]};
+p, label, span {{
+    color: var(--text);
 }}
 
-/* ===== Header Box ===== */
+/* Sidebar */
+[data-testid="stSidebar"] {{
+    background: var(--panel);
+    border-right: 2px solid var(--border);
+}}
+
+/* Header Panel */
 .main-panel {{
-    background: {theme["panel"]};
-    border: 2px solid {theme["border"]};
+    background: var(--panel);
+    border: 2px solid var(--border);
     border-radius: 18px;
     padding: 28px;
-    box-shadow: 0 0 22px {theme["primary"]}55;
+    box-shadow: 0 0 22px color-mix(in srgb, var(--primary) 65%, transparent);
     margin-bottom: 22px;
 }}
 
 .app-title {{
-    font-size: 42px;
+    font-size: 44px;
     font-weight: 900;
-    color: {theme["primary"]};
-    text-shadow: 0 0 14px {theme["primary"]};
+    color: var(--primary);
+    text-shadow: 0 0 14px var(--primary);
     margin-bottom: 6px;
 }}
 
 .app-subtitle {{
-    color: {theme["success"]};
+    color: var(--success);
     font-size: 18px;
-    font-weight: 800;
-    text-shadow: 0 0 8px {theme["success"]};
+    font-weight: 900;
+    text-shadow: 0 0 8px var(--success);
 }}
 
 .app-desc {{
-    color: {theme["muted"]};
+    color: var(--muted);
     font-size: 15px;
+    margin-top: 8px;
 }}
 
-/* ===== Section Card ===== */
+/* Section Card */
 .section-card {{
-    background: {theme["panel"]};
-    border: 2px solid {theme["border"]};
+    background: var(--panel);
+    border: 2px solid var(--border);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 18px;
-    box-shadow: 0 0 18px {theme["border"]}88;
+    box-shadow: 0 0 18px color-mix(in srgb, var(--border) 75%, transparent);
 }}
 
-/* ===== Input Card ===== */
+/* Input Card */
 .input-card {{
-    background: {theme["card"]};
-    border: 2px solid {theme["border"]};
+    background: var(--card);
+    border: 2px solid var(--border);
     border-radius: 15px;
     padding: 18px;
-    min-height: 165px;
-    box-shadow: inset 0 0 14px {theme["primary"]}22;
+    min-height: 175px;
+    box-shadow: inset 0 0 14px color-mix(in srgb, var(--primary) 25%, transparent);
 }}
 
-/* ===== ปุ่ม Streamlit ===== */
+/* Buttons */
 .stButton > button {{
     width: 100%;
     border-radius: 14px;
     border: none;
-    background: linear-gradient(180deg, {theme["primary"]} 0%, {theme["secondary"]} 100%);
+    background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);
     color: white;
     font-weight: 900;
     letter-spacing: 1px;
     padding: 13px 20px;
     box-shadow:
-        inset 0 2px 4px rgba(255,255,255,0.45),
-        0 0 16px {theme["primary"]}aa;
-    transition: 0.2s;
+        inset 0 2px 4px rgba(255,255,255,0.35),
+        0 0 16px color-mix(in srgb, var(--primary) 80%, transparent);
+    transition: 0.20s;
 }}
 
 .stButton > button:hover {{
     transform: scale(1.02);
-    filter: brightness(1.2);
-    color: #ffffff;
+    filter: brightness(1.15);
+    color: white;
     box-shadow:
-        inset 0 2px 4px rgba(255,255,255,0.55),
-        0 0 26px {theme["primary"]};
+        inset 0 2px 4px rgba(255,255,255,0.45),
+        0 0 28px var(--primary);
 }}
 
-/* ===== Input Box ===== */
+/* Input Box */
 .stNumberInput input {{
-    background: {theme["card"]} !important;
-    color: {theme["text"]} !important;
-    border: 2px solid {theme["border"]} !important;
+    background: var(--card) !important;
+    color: var(--text) !important;
+    border: 2px solid var(--border) !important;
     border-radius: 10px !important;
 }}
 
-/* ===== Metric Card ===== */
+.stSlider {{
+    color: var(--primary) !important;
+}}
+
+/* Metric Card */
 .metric-card {{
-    background: {theme["card"]};
-    border: 2px solid {theme["border"]};
+    background: var(--card);
+    border: 2px solid var(--border);
     border-radius: 15px;
     padding: 18px;
     text-align: center;
-    box-shadow: 0 0 16px {theme["primary"]}44;
+    box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 45%, transparent);
 }}
 
 .metric-title {{
-    color: {theme["muted"]};
+    color: var(--muted);
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 900;
     margin-bottom: 6px;
 }}
 
 .metric-value {{
-    color: {theme["primary"]};
-    font-size: 28px;
+    color: var(--primary);
+    font-size: 27px;
     font-weight: 900;
-    text-shadow: 0 0 10px {theme["primary"]};
+    text-shadow: 0 0 10px var(--primary);
 }}
 
-/* ===== Result Box ===== */
-.result-success {{
-    background: {theme["card"]};
-    border: 2px solid {theme["border"]};
+/* Result Box */
+.result-box {{
+    background: var(--card);
+    border: 2px solid var(--border);
     border-radius: 16px;
     padding: 24px;
-    box-shadow: 0 0 22px {theme["success"]}55;
+    box-shadow: 0 0 22px color-mix(in srgb, var(--success) 45%, transparent);
+    margin-bottom: 18px;
 }}
 
 .success-title {{
-    color: {theme["success"]};
-    font-size: 28px;
+    color: var(--success);
+    font-size: 30px;
     font-weight: 900;
-    text-shadow: 0 0 10px {theme["success"]};
+    text-shadow: 0 0 10px var(--success);
 }}
 
 .warning-title {{
-    color: {theme["primary"]};
-    font-size: 28px;
+    color: var(--warning);
+    font-size: 30px;
     font-weight: 900;
-    text-shadow: 0 0 10px {theme["primary"]};
+    text-shadow: 0 0 10px var(--warning);
 }}
 
-/* ===== เส้นแบ่ง ===== */
+/* Neon Line */
 .neon-line {{
     height: 8px;
     border-radius: 20px;
-    background: linear-gradient(90deg, {theme["secondary"]}, {theme["primary"]}, {theme["secondary"]});
-    box-shadow: 0 0 14px {theme["primary"]};
+    background: linear-gradient(90deg, var(--secondary), var(--primary), var(--secondary));
+    box-shadow: 0 0 14px var(--primary);
     margin: 20px 0 26px 0;
 }}
 
-/* ===== Sidebar ===== */
-[data-testid="stSidebar"] {{
-    background: {theme["panel"]};
-    border-right: 2px solid {theme["border"]};
-}}
-
-/* ===== Dataframe ===== */
+/* Dataframe */
 [data-testid="stDataFrame"] {{
-    border: 2px solid {theme["border"]};
+    border: 2px solid var(--border);
     border-radius: 15px;
     overflow: hidden;
 }}
-</style>
-""", unsafe_allow_html=True)
-/* ===== Main Background ===== */
-.stApp {
-    background: #17172b;
-    color: #f5f5ff;
-}
 
-/* ซ่อนเมนู Streamlit */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-
-/* ===== Font Color ===== */
-h1, h2, h3 {
-    color: #ff8a00 !important;
-    font-weight: 900 !important;
-    letter-spacing: 1px;
-}
-
-p, label, span, div {
-    color: #e8e6ff;
-}
-
-/* ===== Header Box ===== */
-.main-panel {
-    background: #101026;
-    border: 2px solid #34254d;
-    border-radius: 18px;
-    padding: 28px;
-    box-shadow: 0 0 20px rgba(255, 111, 0, 0.25);
-    margin-bottom: 22px;
-}
-
-.app-title {
-    font-size: 42px;
-    font-weight: 900;
-    color: #ff8a00;
-    text-shadow: 0 0 12px rgba(255, 120, 0, 0.9);
-    margin-bottom: 6px;
-}
-
-.app-subtitle {
-    color: #00ff66;
-    font-size: 18px;
-    font-weight: 800;
-    text-shadow: 0 0 8px rgba(0, 255, 100, 0.7);
-}
-
-.app-desc {
-    color: #bdb8d9;
-    font-size: 15px;
-}
-
-/* ===== Section Card ===== */
-.section-card {
-    background: #101026;
-    border: 2px solid #32244c;
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 18px;
-    box-shadow: 0 0 18px rgba(62, 43, 91, 0.45);
-}
-
-/* ===== Input Card ===== */
-.input-card {
-    background: #0c0b22;
-    border: 2px solid #32244c;
-    border-radius: 15px;
-    padding: 18px;
-    min-height: 165px;
-    box-shadow: inset 0 0 12px rgba(255, 100, 0, 0.08);
-}
-
-/* ===== ปุ่ม Streamlit ===== */
-.stButton > button {
-    width: 100%;
+/* Alert Box Adjustment */
+.stAlert {{
     border-radius: 14px;
-    border: none;
-    background: linear-gradient(180deg, #ffb000 0%, #ff7a00 45%, #ff3d00 100%);
-    color: white;
-    font-weight: 900;
-    letter-spacing: 1px;
-    padding: 13px 20px;
-    box-shadow:
-        inset 0 2px 4px rgba(255,255,255,0.45),
-        0 0 14px rgba(255, 111, 0, 0.55);
-    transition: 0.2s;
-}
-
-.stButton > button:hover {
-    transform: scale(1.02);
-    background: linear-gradient(180deg, #ffd000 0%, #ff8a00 45%, #ff3300 100%);
-    color: #ffffff;
-    box-shadow:
-        inset 0 2px 4px rgba(255,255,255,0.55),
-        0 0 24px rgba(255, 120, 0, 0.95);
-}
-
-/* ===== Input Box ===== */
-.stNumberInput input {
-    background: #0c0b22 !important;
-    color: #ffffff !important;
-    border: 2px solid #32244c !important;
-    border-radius: 10px !important;
-}
-
-.stSlider {
-    color: #ff8a00 !important;
-}
-
-/* ===== Metric Card ===== */
-.metric-card {
-    background: #0c0b22;
-    border: 2px solid #32244c;
-    border-radius: 15px;
-    padding: 18px;
-    text-align: center;
-    box-shadow: 0 0 14px rgba(255, 111, 0, 0.18);
-}
-
-.metric-title {
-    color: #bdb8d9;
-    font-size: 13px;
-    font-weight: 800;
-    margin-bottom: 6px;
-}
-
-.metric-value {
-    color: #ff8a00;
-    font-size: 28px;
-    font-weight: 900;
-    text-shadow: 0 0 10px rgba(255, 120, 0, 0.8);
-}
-
-/* ===== Result Box ===== */
-.result-success {
-    background: #0c0b22;
-    border: 2px solid #32244c;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 0 20px rgba(0, 255, 100, 0.22);
-}
-
-.success-title {
-    color: #00ff66;
-    font-size: 28px;
-    font-weight: 900;
-    text-shadow: 0 0 10px rgba(0, 255, 100, 0.8);
-}
-
-.warning-title {
-    color: #ff7a00;
-    font-size: 28px;
-    font-weight: 900;
-    text-shadow: 0 0 10px rgba(255, 120, 0, 0.8);
-}
-
-/* ===== เส้นแบ่ง ===== */
-.neon-line {
-    height: 8px;
-    border-radius: 20px;
-    background: linear-gradient(90deg, #ff3d00, #ffb000, #ff3d00);
-    box-shadow: 0 0 12px rgba(255, 120, 0, 0.8);
-    margin: 20px 0 26px 0;
-}
-
-/* ===== Sidebar ===== */
-[data-testid="stSidebar"] {
-    background: #101026;
-    border-right: 2px solid #32244c;
-}
-
-/* ===== Dataframe ===== */
-[data-testid="stDataFrame"] {
-    border: 2px solid #32244c;
-    border-radius: 15px;
-    overflow: hidden;
-}
+}}
 </style>
 """, unsafe_allow_html=True)
 
 
-# ================= HEADER =================
+# =====================================================
+# HEADER
+# =====================================================
 st.markdown("""
 <div class="main-panel">
     <div class="app-title">MARKET SEGMENTATION COMMAND</div>
     <div class="app-subtitle">SUCCESS! SYSTEM READY</div>
     <div class="app-desc">
-        ระบบจัดกลุ่มลูกค้าด้วย K-Means ในสไตล์ Dark Neon Tactical UI
+        ระบบจัดกลุ่มลูกค้าด้วย K-Means ในสไตล์ Dark Neon Tactical UI พร้อมปุ่มสลับสี Theme
     </div>
 </div>
 <div class="neon-line"></div>
 """, unsafe_allow_html=True)
 
 
-# ================= LOAD MODEL =================
-try:
-    kmeans_loaded = joblib.load("model/kmeans_redbull.pkl")
-    scaler_loaded = joblib.load("model/scaler_redbull.pkl")
+# =====================================================
+# LOAD MODEL
+# =====================================================
+@st.cache_resource
+def load_models():
+    try:
+        kmeans_model = joblib.load("model/kmeans_redbull.pkl")
+        scaler_model = joblib.load("model/scaler_redbull.pkl")
+        return kmeans_model, scaler_model, None
+
+    except FileNotFoundError:
+        return None, None, "ไม่พบไฟล์ kmeans_redbull.pkl หรือ scaler_redbull.pkl ในโฟลเดอร์ model"
+
+    except Exception as e:
+        return None, None, str(e)
+
+
+kmeans_loaded, scaler_loaded, load_error = load_models()
+
+if load_error:
+    st.error(f"❌ โหลดโมเดลไม่สำเร็จ: {load_error}")
+    st.stop()
+else:
     st.sidebar.success("✅ โหลดโมเดล K-Means และ Scaler สำเร็จ")
-except FileNotFoundError:
-    st.error("❌ ไม่พบไฟล์ kmeans_redbull.pkl หรือ scaler_redbull.pkl ในโฟลเดอร์ model")
-    st.stop()
-except Exception as e:
-    st.error(f"❌ โหลดโมเดลไม่สำเร็จ: {e}")
-    st.stop()
 
 
-# ================= FEATURES =================
+# =====================================================
+# FEATURES
+# =====================================================
 features = [
     "Units_Sold",
     "Marketing_Spend",
@@ -407,7 +358,9 @@ features = [
 ]
 
 
-# ================= CENTROIDS =================
+# =====================================================
+# CENTROIDS
+# =====================================================
 centroids_data = {
     "Units_Sold": [94217.67, 224432.27],
     "Marketing_Spend": [101039.83, 200408.08],
@@ -420,11 +373,13 @@ centroids = pd.DataFrame(centroids_data, index=[0, 1])
 centroids.index.name = "Cluster"
 
 
-# ================= INPUT SECTION =================
+# =====================================================
+# INPUT SECTION
+# =====================================================
 st.markdown("""
 <div class="section-card">
     <h3>INPUT IN ACTION</h3>
-    <p>กรุณาป้อนข้อมูลลูกค้าเพื่อให้ระบบวิเคราะห์กลุ่ม</p>
+    <p>กรุณาป้อนข้อมูลลูกค้าเพื่อให้ระบบวิเคราะห์กลุ่มลูกค้า</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -432,25 +387,31 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown("<div class='input-card'>", unsafe_allow_html=True)
+
     units_sold = st.number_input(
         "Units Sold",
         min_value=0,
-        value=150000
+        value=150000,
+        step=1000
     )
 
     marketing_spend = st.number_input(
         "Marketing Spend",
         min_value=0,
-        value=100000
+        value=100000,
+        step=1000
     )
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
     st.markdown("<div class='input-card'>", unsafe_allow_html=True)
+
     logistics_delay = st.number_input(
         "Logistics Delay (days)",
         min_value=0,
-        value=30
+        value=30,
+        step=1
     )
 
     customer_score = st.slider(
@@ -459,14 +420,17 @@ with col2:
         max_value=99,
         value=50
     )
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col3:
     st.markdown("<div class='input-card'>", unsafe_allow_html=True)
+
     unit_price = st.number_input(
         "Unit Price",
         min_value=0.0,
         value=35.0,
+        step=0.50,
         format="%.2f"
     )
 
@@ -478,25 +442,45 @@ with col3:
         <div class="metric-value">{revenue:,.2f}</div>
     </div>
     """, unsafe_allow_html=True)
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-# ================= DATA PREVIEW =================
+# =====================================================
+# DATA PREVIEW
+# =====================================================
 new_data_input = pd.DataFrame(
     [[units_sold, marketing_spend, logistics_delay, customer_score, revenue]],
     columns=features
 )
 
 st.markdown("### DATA PREVIEW")
-st.dataframe(new_data_input, use_container_width=True, hide_index=True)
+st.dataframe(
+    new_data_input,
+    use_container_width=True,
+    hide_index=True
+)
 
 
-# ================= PREDICTION =================
-if st.button("BUTTON  |  จัดกลุ่มข้อมูล"):
-    if not new_data_input.isnull().values.any():
+# =====================================================
+# PREDICTION
+# =====================================================
+st.markdown("<div class='neon-line'></div>", unsafe_allow_html=True)
 
-        scaled_data = scaler_loaded.transform(new_data_input)
-        predicted_cluster = kmeans_loaded.predict(scaled_data)[0]
+if st.button("BUTTON  |  จัดกลุ่มข้อมูล", use_container_width=True):
+
+    if new_data_input.isnull().values.any():
+        st.warning("กรุณาตรวจสอบการป้อนข้อมูลให้ครบถ้วน")
+
+    else:
+        try:
+            scaled_data = scaler_loaded.transform(new_data_input)
+            predicted_cluster = int(kmeans_loaded.predict(scaled_data)[0])
+
+        except Exception as e:
+            st.error(f"❌ เกิดข้อผิดพลาดในการทำนาย: {e}")
+            st.stop()
+
         cluster_info = centroids.loc[predicted_cluster]
 
         if predicted_cluster == 0:
@@ -510,14 +494,14 @@ if st.button("BUTTON  |  จัดกลุ่มข้อมูล"):
         else:
             result_title = "SUCCESS!"
             result_class = "success-title"
-            result_text = "Cluster 1 - กลุ่มลูกค้ายอดขายสูง / High-Value"
+            result_text = "Cluster 1 - กลุ่มลูกค้ายอดขายสูง / High-Value Customer"
             result_detail = (
                 "กลุ่มนี้มี Units Sold, Marketing Spend และ Revenue อยู่ในระดับสูง "
-                "ควรรักษาลูกค้ากลุ่มนี้ด้วยบริการพิเศษและลดความล่าช้าในการจัดส่ง"
+                "ควรรักษาลูกค้ากลุ่มนี้ด้วยบริการพิเศษ และลดความล่าช้าในการจัดส่ง"
             )
 
         st.markdown(f"""
-        <div class="result-success">
+        <div class="result-box">
             <div class="{result_class}">{result_title}</div>
             <p><b>{result_text}</b></p>
             <p>{result_detail}</p>
@@ -568,19 +552,35 @@ if st.button("BUTTON  |  จัดกลุ่มข้อมูล"):
             </div>
             """, unsafe_allow_html=True)
 
-    else:
-        st.warning("กรุณาตรวจสอบการป้อนข้อมูลให้ครบถ้วน")
 
-
-# ================= FOOTER =================
+# =====================================================
+# HOW TO USE
+# =====================================================
 st.markdown("""
-<div class="neon-line"></div>
-<div style="text-align:center; color:#77708f;">
-    Boot Camp: Data Science and Machine Learning
+<div class="section-card">
+    <h3>วิธีใช้งาน</h3>
+    <p>1. ป้อน Units Sold, Marketing Spend, Logistics Delay, Customer Score และ Unit Price</p>
+    <p>2. ระบบจะคำนวณ Revenue ให้อัตโนมัติ</p>
+    <p>3. กดปุ่ม BUTTON | จัดกลุ่มข้อมูล</p>
+    <p>4. ดูผลลัพธ์ Cluster และรายละเอียดค่าเฉลี่ยของกลุ่ม</p>
+    <p>5. กด SWITCH COLOR THEME ที่ Sidebar เพื่อเปลี่ยนสีหน้าจอ</p>
 </div>
 """, unsafe_allow_html=True)
 
 
-# ================= BACK HOME =================
-if st.button("🏠 กลับหน้าหลัก"):
+# =====================================================
+# FOOTER
+# =====================================================
+st.markdown("""
+<div class="neon-line"></div>
+<div style="text-align:center; color: var(--muted);">
+    Boot Camp: Data Science and Machine Learning | Market Segmentation Tactical UI
+</div>
+""", unsafe_allow_html=True)
+
+
+# =====================================================
+# BACK HOME
+# =====================================================
+if st.button("🏠 กลับหน้าหลัก", use_container_width=True):
     st.switch_page("app.py")
