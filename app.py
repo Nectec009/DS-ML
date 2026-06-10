@@ -174,6 +174,12 @@ menus = [
         "desc": "clustering segment",
         "icon": "🚚",
         "page": "pages/clustering_segment.py"
+    },
+    {
+        "title": "TCP Group: ระบบแนะนำสินค้า",
+        "desc": "TCP Group: ระบบแนะนำสินค้า",
+        "icon": "🚚",
+        "page": "pages/association_items.py"
     }
 ]
 
