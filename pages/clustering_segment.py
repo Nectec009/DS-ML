@@ -12,7 +12,184 @@ st.set_page_config(
 
 # ================= UI STYLE แบบภาพตัวอย่าง =================
 st.markdown("""
+<style># ================= UI STYLE WITH SWITCH THEME =================
+st.markdown(f"""
 <style>
+/* ===== Main Background ===== */
+.stApp {{
+    background: {theme["bg"]};
+    color: {theme["text"]};
+}}
+
+/* ซ่อนเมนู Streamlit */
+#MainMenu {{visibility: hidden;}}
+footer {{visibility: hidden;}}
+header {{visibility: hidden;}}
+
+/* ===== Font Color ===== */
+h1, h2, h3 {{
+    color: {theme["primary"]} !important;
+    font-weight: 900 !important;
+    letter-spacing: 1px;
+}}
+
+p, label, span, div {{
+    color: {theme["text"]};
+}}
+
+/* ===== Header Box ===== */
+.main-panel {{
+    background: {theme["panel"]};
+    border: 2px solid {theme["border"]};
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 0 22px {theme["primary"]}55;
+    margin-bottom: 22px;
+}}
+
+.app-title {{
+    font-size: 42px;
+    font-weight: 900;
+    color: {theme["primary"]};
+    text-shadow: 0 0 14px {theme["primary"]};
+    margin-bottom: 6px;
+}}
+
+.app-subtitle {{
+    color: {theme["success"]};
+    font-size: 18px;
+    font-weight: 800;
+    text-shadow: 0 0 8px {theme["success"]};
+}}
+
+.app-desc {{
+    color: {theme["muted"]};
+    font-size: 15px;
+}}
+
+/* ===== Section Card ===== */
+.section-card {{
+    background: {theme["panel"]};
+    border: 2px solid {theme["border"]};
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 0 18px {theme["border"]}88;
+}}
+
+/* ===== Input Card ===== */
+.input-card {{
+    background: {theme["card"]};
+    border: 2px solid {theme["border"]};
+    border-radius: 15px;
+    padding: 18px;
+    min-height: 165px;
+    box-shadow: inset 0 0 14px {theme["primary"]}22;
+}}
+
+/* ===== ปุ่ม Streamlit ===== */
+.stButton > button {{
+    width: 100%;
+    border-radius: 14px;
+    border: none;
+    background: linear-gradient(180deg, {theme["primary"]} 0%, {theme["secondary"]} 100%);
+    color: white;
+    font-weight: 900;
+    letter-spacing: 1px;
+    padding: 13px 20px;
+    box-shadow:
+        inset 0 2px 4px rgba(255,255,255,0.45),
+        0 0 16px {theme["primary"]}aa;
+    transition: 0.2s;
+}}
+
+.stButton > button:hover {{
+    transform: scale(1.02);
+    filter: brightness(1.2);
+    color: #ffffff;
+    box-shadow:
+        inset 0 2px 4px rgba(255,255,255,0.55),
+        0 0 26px {theme["primary"]};
+}}
+
+/* ===== Input Box ===== */
+.stNumberInput input {{
+    background: {theme["card"]} !important;
+    color: {theme["text"]} !important;
+    border: 2px solid {theme["border"]} !important;
+    border-radius: 10px !important;
+}}
+
+/* ===== Metric Card ===== */
+.metric-card {{
+    background: {theme["card"]};
+    border: 2px solid {theme["border"]};
+    border-radius: 15px;
+    padding: 18px;
+    text-align: center;
+    box-shadow: 0 0 16px {theme["primary"]}44;
+}}
+
+.metric-title {{
+    color: {theme["muted"]};
+    font-size: 13px;
+    font-weight: 800;
+    margin-bottom: 6px;
+}}
+
+.metric-value {{
+    color: {theme["primary"]};
+    font-size: 28px;
+    font-weight: 900;
+    text-shadow: 0 0 10px {theme["primary"]};
+}}
+
+/* ===== Result Box ===== */
+.result-success {{
+    background: {theme["card"]};
+    border: 2px solid {theme["border"]};
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 0 22px {theme["success"]}55;
+}}
+
+.success-title {{
+    color: {theme["success"]};
+    font-size: 28px;
+    font-weight: 900;
+    text-shadow: 0 0 10px {theme["success"]};
+}}
+
+.warning-title {{
+    color: {theme["primary"]};
+    font-size: 28px;
+    font-weight: 900;
+    text-shadow: 0 0 10px {theme["primary"]};
+}}
+
+/* ===== เส้นแบ่ง ===== */
+.neon-line {{
+    height: 8px;
+    border-radius: 20px;
+    background: linear-gradient(90deg, {theme["secondary"]}, {theme["primary"]}, {theme["secondary"]});
+    box-shadow: 0 0 14px {theme["primary"]};
+    margin: 20px 0 26px 0;
+}}
+
+/* ===== Sidebar ===== */
+[data-testid="stSidebar"] {{
+    background: {theme["panel"]};
+    border-right: 2px solid {theme["border"]};
+}}
+
+/* ===== Dataframe ===== */
+[data-testid="stDataFrame"] {{
+    border: 2px solid {theme["border"]};
+    border-radius: 15px;
+    overflow: hidden;
+}}
+</style>
+""", unsafe_allow_html=True)
 /* ===== Main Background ===== */
 .stApp {
     background: #17172b;
