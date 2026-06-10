@@ -168,6 +168,12 @@ menus = [
         "desc": "ระบบทำนายข้อมูลรถบรรทุกหรือการขนส่ง",
         "icon": "🚚",
         "page": "pages/truck_predict.py"
+    },
+    {
+        "title": "clustering segment",
+        "desc": "clustering segment",
+        "icon": "🚚",
+        "page": "pages/clustering_segment.py"
     }
 ]
 
