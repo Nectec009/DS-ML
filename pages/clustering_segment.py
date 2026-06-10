@@ -51,6 +51,34 @@ new_data_input = pd.DataFrame([[units_sold, marketing_spend, customer_score, log
 # --- 3. ตรรกะการทำนาย (Prediction Logic) ---
 if st.button("จัดกลุ่มข้อมูล"):
     if not new_data_input.isnull().values.any(): # ตรวจสอบว่ามีข้อมูลว่างเปล่าหรือไม่
+        # ตรวจสอบคอลัมน์ที่ scaler ต้องการ
+expected_cols = list(scaler_loaded.feature_names_in_)
+
+# คอลัมน์ที่ input ปัจจุบันมี
+current_cols = list(new_data_input.columns)
+
+# แสดงเพื่อ debug
+st.write("คอลัมน์ที่ scaler ต้องการ:", expected_cols)
+st.write("คอลัมน์ที่ input มี:", current_cols)
+
+# หาคอลัมน์ที่ขาด
+missing_cols = [col for col in expected_cols if col not in new_data_input.columns]
+
+# หาคอลัมน์ที่เกิน
+extra_cols = [col for col in new_data_input.columns if col not in expected_cols]
+
+# เพิ่มคอลัมน์ที่ขาด โดยใส่ค่า 0
+for col in missing_cols:
+    new_data_input[col] = 0
+
+# ลบคอลัมน์ที่เกิน
+new_data_input = new_data_input.drop(columns=extra_cols, errors="ignore")
+
+# เรียงคอลัมน์ให้ตรงกับตอน train
+new_data_input = new_data_input[expected_cols]
+
+# ค่อย transform
+scaled_data = scaler_loaded.transform(new_data_input)
         # ทำการ Scale ข้อมูลใหม่ด้วย Scaler ที่โหลดมา
         scaled_data = scaler_loaded.transform(new_data_input)
 
