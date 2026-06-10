@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # =====================================================
-# CSS STYLE: SOFT NEUMORPHISM UI
+# CSS STYLE
 # =====================================================
 st.markdown("""
 <style>
@@ -25,7 +25,7 @@ st.markdown("""
 }
 
 .block-container {
-    max-width: 1200px;
+    max-width: 1220px;
     padding-top: 1rem;
     padding-bottom: 2rem;
 }
@@ -52,16 +52,25 @@ p, label, span, div {
 }
 
 /* ================= TOP BAR ================= */
-.top-bar {
+.top-panel {
+    border-radius: 28px;
+    background: #e9eef8;
+    padding: 24px 28px;
+    margin-bottom: 26px;
+    box-shadow:
+        10px 10px 22px #c7ccd5,
+        -10px -10px 22px #ffffff;
+}
+
+.top-row {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 22px;
+    gap: 18px;
 }
 
 .logo-circle {
-    width: 36px;
-    height: 36px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     background: #6f7889;
     color: #ffc107;
@@ -71,31 +80,32 @@ p, label, span, div {
     box-shadow:
         7px 7px 14px #c7ccd5,
         -7px -7px 14px #ffffff;
-    font-size: 18px;
+    font-size: 20px;
 }
 
-.top-title {
-    font-size: 24px;
+.app-title {
+    font-size: 30px;
     font-weight: 900;
     color: #14345f;
-    letter-spacing: 0.5px;
 }
 
-/* ================= MAIN HERO ================= */
+.app-subtitle {
+    margin-top: 8px;
+    color: #6e7584;
+    font-size: 15px;
+}
+
+/* ================= MOCKUP LAYOUT ================= */
 .neo-layout {
     display: grid;
-    grid-template-columns: 250px 260px 1fr;
+    grid-template-columns: 250px 270px 1fr;
     gap: 34px;
     align-items: start;
-    margin-top: 12px;
+    margin-top: 8px;
     margin-bottom: 34px;
 }
 
-/* ================= LEFT CONTROL MOCKUP ================= */
-.left-panel {
-    min-height: 520px;
-}
-
+/* ================= LEFT MOCKUP ================= */
 .vertical-bars {
     display: flex;
     gap: 24px;
@@ -186,7 +196,7 @@ p, label, span, div {
 }
 
 .product-price {
-    font-size: 23px;
+    font-size: 24px;
     color: #14345f;
     font-weight: 900;
 }
@@ -239,11 +249,7 @@ p, label, span, div {
     color: white;
 }
 
-/* ================= MIDDLE PANEL ================= */
-.middle-panel {
-    min-height: 520px;
-}
-
+/* ================= MIDDLE MOCKUP ================= */
 .rating-card {
     border-radius: 22px;
     background: #e9eef8;
@@ -339,11 +345,7 @@ p, label, span, div {
     letter-spacing: 4px;
 }
 
-/* ================= RIGHT PANEL ================= */
-.right-panel {
-    min-height: 520px;
-}
-
+/* ================= RIGHT MOCKUP ================= */
 .button-grid {
     display: grid;
     grid-template-columns: 150px repeat(5, 48px);
@@ -499,7 +501,7 @@ p, label, span, div {
     top: 0;
 }
 
-/* ================= REAL STREAMLIT FORM ================= */
+/* ================= FORM & RESULT ================= */
 .form-shell {
     border-radius: 25px;
     background: #e9eef8;
@@ -552,6 +554,12 @@ p, label, span, div {
     color: #14345f !important;
 }
 
+[data-baseweb="tag"] {
+    background-color: #123b6d !important;
+    color: white !important;
+    border-radius: 18px !important;
+}
+
 .stButton > button {
     width: 100%;
     height: 46px;
@@ -580,6 +588,10 @@ p, label, span, div {
         -8px -8px 16px #ffffff;
 }
 
+.stAlert {
+    border-radius: 20px;
+}
+
 /* ================= RESPONSIVE ================= */
 @media (max-width: 1000px) {
     .neo-layout {
@@ -602,15 +614,6 @@ p, label, span, div {
 # HELPER FUNCTIONS
 # =====================================================
 def parse_itemset(value):
-    """
-    แปลงข้อความจาก CSV ให้เป็น frozenset
-    รองรับ:
-    - frozenset({'A', 'B'})
-    - {'A', 'B'}
-    - ['A', 'B']
-    - ('A', 'B')
-    - A
-    """
     if isinstance(value, frozenset):
         return value
 
@@ -630,6 +633,7 @@ def parse_itemset(value):
             match = re.match(r"^frozenset\\((.*)\\)$", text)
             if match:
                 inner = match.group(1).strip()
+
                 if inner == "":
                     return frozenset()
 
@@ -666,21 +670,9 @@ def itemset_to_text(itemset):
         if len(items) == 0:
             return "-"
         return ", ".join(items)
+
     except Exception:
         return str(itemset)
-
-
-def get_item_type(item):
-    if item in all_regions:
-        return "Region"
-
-    if item in all_products:
-        return "Product"
-
-    if item in all_channels:
-        return "Channel"
-
-    return "Item"
 
 
 def get_recommendations(user_selected_items, rules_df, top_n=5):
@@ -697,9 +689,7 @@ def get_recommendations(user_selected_items, rules_df, top_n=5):
                         "item": rec_item,
                         "confidence": float(rule["confidence"]),
                         "lift": float(rule["lift"]),
-                        "support": float(rule["support"]) if "support" in rule else 0,
-                        "antecedents": rule_antecedents,
-                        "consequents": rule_consequents
+                        "support": float(rule["support"]) if "support" in rules_df.columns else 0.0
                     })
 
     sorted_recs = sorted(
@@ -724,17 +714,18 @@ def get_recommendations(user_selected_items, rules_df, top_n=5):
 
 def make_rules_display(df):
     display_df = df.copy()
+
     display_df["Antecedents"] = display_df["antecedents"].apply(itemset_to_text)
     display_df["Consequents"] = display_df["consequents"].apply(itemset_to_text)
 
-    cols = ["Antecedents", "Consequents"]
+    show_cols = ["Antecedents", "Consequents"]
 
     if "support" in display_df.columns:
-        cols.append("support")
+        show_cols.append("support")
 
-    cols += ["confidence", "lift"]
+    show_cols += ["confidence", "lift"]
 
-    display_df = display_df[cols].rename(columns={
+    display_df = display_df[show_cols].rename(columns={
         "support": "Support",
         "confidence": "Confidence",
         "lift": "Lift"
@@ -744,7 +735,7 @@ def make_rules_display(df):
 
 
 # =====================================================
-# LOAD ASSOCIATION RULES
+# LOAD DATA
 # =====================================================
 @st.cache_data
 def load_rules():
@@ -779,7 +770,7 @@ if df_rules_app.empty:
 
 
 # =====================================================
-# CATEGORY DATA
+# CATEGORY MASTER DATA
 # =====================================================
 all_regions_master = [
     "USA-WEST",
@@ -808,8 +799,8 @@ all_channels_master = [
 ]
 
 all_items_in_rules = (
-    {x for s in df_rules_app["antecedents"] for x in s}
-    .union({x for s in df_rules_app["consequents"] for x in s})
+    {item for itemset in df_rules_app["antecedents"] for item in itemset}
+    .union({item for itemset in df_rules_app["consequents"] for item in itemset})
 )
 
 all_regions = sorted([item for item in all_regions_master if item in all_items_in_rules])
@@ -817,20 +808,44 @@ all_products = sorted([item for item in all_products_master if item in all_items
 all_channels = sorted([item for item in all_channels_master if item in all_items_in_rules])
 
 
+def get_item_type(item):
+    if item in all_regions_master:
+        return "Region"
+
+    if item in all_products_master:
+        return "Product"
+
+    if item in all_channels_master:
+        return "Channel"
+
+    return "Item"
+
+
 # =====================================================
-# TOP UI MOCKUP
+# TOP HEADER
 # =====================================================
 st.markdown("""
-<div class="top-bar">
-    <div class="logo-circle">👑</div>
-    <div class="top-title">TCP Behavioral Association Recommendation</div>
+<div class="top-panel">
+    <div class="top-row">
+        <div class="logo-circle">👑</div>
+        <div>
+            <div class="app-title">TCP Behavioral Association Recommendation</div>
+            <div class="app-subtitle">
+                ระบบแนะนำสินค้า ช่องทาง และภูมิภาค จากกฎความสัมพันธ์ Association Rules
+            </div>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
+
+# =====================================================
+# MOCKUP UI AREA
+# =====================================================
 st.markdown("""
 <div class="neo-layout">
 
-    <div class="left-panel">
+    <div>
         <div class="vertical-bars">
             <div class="v-track"><div class="v-fill" style="height: 98px;"></div></div>
             <div class="v-track"><div class="v-fill" style="height: 154px;"></div></div>
@@ -860,10 +875,11 @@ st.markdown("""
         </div>
     </div>
 
-    <div class="middle-panel">
+    <div>
         <div class="rating-card">
             <div class="rating-title">recommendation</div>
             <div class="rating-line"></div>
+
             <div>
                 <span class="stars">★ ★ ★</span>
                 <span style="color:#c8ced8;">★ ★</span>
@@ -891,7 +907,7 @@ st.markdown("""
         <div class="dots-bubble">••••</div>
     </div>
 
-    <div class="right-panel">
+    <div>
         <div class="button-grid">
             <div class="neo-pill">button</div>
             <div class="icon-btn">≡</div>
@@ -941,12 +957,15 @@ st.markdown("""
 
 
 # =====================================================
-# REAL INPUT FORM
+# INPUT FORM
 # =====================================================
 st.markdown("""
 <div class="form-shell">
     <h2>🛒 เลือกรายการที่สนใจ</h2>
-    <p>ให้ระบบแนะนำสินค้า / ช่องทาง / ภูมิภาคอื่น ๆ ที่ลูกค้ามีแนวโน้มสนใจ จากกฎความสัมพันธ์</p>
+    <p>
+        เลือก Region, Product Variant หรือ Channel แล้วให้ระบบแนะนำรายการที่เกี่ยวข้อง
+        จากกฎความสัมพันธ์
+    </p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -977,7 +996,7 @@ user_input_items = frozenset(selected_regions + selected_products + selected_cha
 
 
 # =====================================================
-# RECOMMENDATION
+# RECOMMENDATION RESULT
 # =====================================================
 if st.button("💡 แนะนำ!", use_container_width=True):
     if not user_input_items:
@@ -990,6 +1009,8 @@ if st.button("💡 แนะนำ!", use_container_width=True):
             top_n=5
         )
 
+        selected_display = ", ".join([escape(str(item)) for item in user_input_items])
+
         st.markdown("""
         <div class="result-shell">
             <h2>ผลการแนะนำ</h2>
@@ -997,7 +1018,6 @@ if st.button("💡 แนะนำ!", use_container_width=True):
         </div>
         """, unsafe_allow_html=True)
 
-        selected_display = ", ".join([escape(str(item)) for item in user_input_items])
         st.info(f"รายการที่เลือก: {selected_display}")
 
         if recommendations:
